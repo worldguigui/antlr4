@@ -1,0 +1,64 @@
+# Left-recursive rules
+# 左递归规则
+
+[原文链接](https://github.com/antlr/antlr4/blob/master/doc/left-recursion.md)
+
+The most natural expression of some common language constructs is left recursive. For example C declarators and arithmetic expressions. Unfortunately, left recursive specifications of arithmetic expressions are typically ambiguous but much easier to write out than the multiple levels required in a typical top-down grammar. Here is a sample ANTLR 4 grammar with a left recursive expression rule:
+某些常见语言结构最自然的表达方式是左递归。例如 C 语言的声明符和算术表达式。不幸的是，算术表达式的左递归规范通常具有歧义，但比典型的自顶向下语法所需的多层级写法要容易得多。以下是一个包含左递归表达式规则的 ANTLR 4 示例语法：
+
+```
+stat: expr '=' expr ';' // e.g., x=y; or x=f(x);
+    | expr ';'          // e.g., f(x); or f(g(x));
+    ;
+expr: expr '*' expr
+    | expr '+' expr
+    | expr '(' expr ')' // f(x)
+    | id
+    ;
+```
+
+In straight context free grammars, such a rule is ambiguous because `1+2*3` it can interpret either operator as occurring first, but ANTLR rewrites that to be non-left recursive and unambiguous using semantic predicates:
+在直接的上下文无关文法中，这样的规则是有歧义的，因为对于 `1+2*3`，它可以解释任一运算符先出现，但 ANTLR 使用语义谓词将其重写为非左递归且无歧义：
+
+```
+expr[int pr] : id
+               ( {4 >= $pr}? '*' expr[5]
+               | {3 >= $pr}? '+' expr[4]
+               | {2 >= $pr}? '(' expr[0] ')'
+               )*
+             ;
+```
+
+The predicates resolve ambiguities by comparing the precedence of the current operator against the precedence of the previous operator. An expansion of expr[pr] can match only those subexpressions whose precedence meets or exceeds pr.
+谓词通过将当前运算符的优先级与前一运算符的优先级进行比较来解决歧义。expr[pr] 的扩展只能匹配那些优先级达到或超过 pr 的子表达式。
+
+## Formal rules
+## 正式规则
+
+The formal 4.0, 4.1 ANTLR left-recursion elimination rules were changed (simplified) for 4.2 and are laid out in the [ALL(*) tech report](http://www.antlr.org/papers/allstar-techreport.pdf):
+正式的 4.0、4.1 版本 ANTLR 左递归消除规则在 4.2 版本中进行了更改（简化），并在 [ALL(*) 技术报告](http://www.antlr.org/papers/allstar-techreport.pdf) 中进行了阐述：
+
+* Binary expressions are expressions which contain a recursive invocation of the rule as the first and last element of the alternative.
+* Suffix expressions contain a recursive invocation of the rule as the first element of the alternative, but not as the last element.
+* Prefix expressions contain a recursive invocation of the rule as the last element of the alternative, but not as the first element.
+* 二元表达式是在选项的第一个和最后一个元素包含规则递归调用的表达式。
+* 后缀表达式是在选项的第一个元素包含规则递归调用，但不在最后一个元素的表达式。
+* 前缀表达式是在选项的最后一个元素包含规则递归调用，但不在第一个元素的表达式。
+
+There is no such thing as a "ternary" expression--they are just binary expressions in disguise.
+不存在所谓的"三元"表达式——它们只是伪装的二元表达式。
+
+The right associativity specifiers used to be on the individual tokens but it's done on alternative basis anyway so the option is now on the individual alternative; e.g.,
+右结合性说明符过去用于单个词法符号，但由于它实际上是基于选项来处理的，所以现在该选项位于单个选项上；例如，
+
+```
+e : e '*' e
+  | e '+' e
+  |<assoc=right> e '?' e ':' e
+  |<assoc=right> e '=' e
+  | INT
+  ;
+```
+
+If your 4.0 or 4.1 grammar uses a right-associative ternary operator, you will need to update your grammar to include `<assoc=right>` on the alternative operator. To smooth the transition, `<assoc=right>` is still allowed on token references but it is ignored.
+如果您的 4.0 或 4.1 语法使用了右结合的三元运算符，您需要更新语法，在对应的选项运算符上包含 `<assoc=right>`。为了平稳过渡，在词法符号引用上仍然允许使用 `<assoc=right>`，但它会被忽略。

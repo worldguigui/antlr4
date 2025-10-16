@@ -1,2 +1,3 @@
-# antlr4
-a Chinese translation of the official antlr4 doc for Java  
+# antlr4官方文档的双语翻译
+通过antlr4的官方文档进行学习,期间通过deepseek-v3大语言模型进行翻译,我仅仅对翻译结果进行整理,希望能对你有所帮助.
+
